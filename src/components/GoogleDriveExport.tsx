@@ -1,160 +1,162 @@
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { useSurveyStore } from '@/lib/store';
 import { Survey, Response } from '@/types';
+import { FileJson, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { Save } from 'lucide-react';
-
-const CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; // Replace with your Google API Client ID
-const API_KEY = "YOUR_GOOGLE_API_KEY"; // Replace with your Google API Key
-const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
-const SCOPES = "https://www.googleapis.com/auth/drive.file";
 
 interface GoogleDriveExportProps {
   surveyId: string;
   className?: string;
 }
 
-const GoogleDriveExport = ({ surveyId, className = "" }: GoogleDriveExportProps) => {
+const GoogleDriveExport = ({ surveyId, className }: GoogleDriveExportProps) => {
   const [isExporting, setIsExporting] = useState(false);
   const { surveys, getResponsesForSurvey } = useSurveyStore();
-  const survey = surveys.find(s => s.id === surveyId);
   
+  const survey = surveys.find(s => s.id === surveyId);
+  const responses = getResponsesForSurvey(surveyId);
+
   if (!survey) return null;
 
-  const formatResultsToCSV = (survey: Survey, responses: Response[]) => {
-    // Headers: Question texts
-    const headers = ["Timestamp", ...survey.questions.map(q => q.text)];
-    
-    // Format each response
-    const rows = responses.map(response => {
-      const date = new Date(response.createdAt).toLocaleDateString();
-      
-      // Map answers to their corresponding questions
-      const answerValues = survey.questions.map(question => {
-        const answer = response.answers.find(a => a.questionId === question.id);
-        if (!answer) return "";
-        
-        // Format based on answer type
-        if (Array.isArray(answer.value)) {
-          // For checkbox type (multiple values)
-          const selectedChoices = question.choices?.filter(c => 
-            (answer.value as string[]).includes(c.id)
-          ).map(c => c.text);
-          return selectedChoices?.join(", ") || "";
-        } else if (typeof answer.value === "number") {
-          // For rating type
-          return answer.value.toString();
-        } else {
-          // For text or single-choice
-          if (question.type === "multipleChoice") {
-            const choice = question.choices?.find(c => c.id === answer.value);
-            return choice?.text || "";
-          }
-          return answer.value;
-        }
-      });
-      
-      return [date, ...answerValues];
-    });
-    
-    // Combine headers and rows
-    const csvContent = [
-      headers.join(","),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    ].join("\n");
-    
-    return csvContent;
-  };
+  const handleExport = async () => {
+    if (!window.gapi) {
+      toast.error("Google API not loaded. Please try again later.");
+      return;
+    }
 
-  const exportToGoogleDrive = async () => {
     setIsExporting(true);
     
     try {
-      // Load the Google API client library
-      if (!window.gapi) {
-        toast.error("Google API client library not loaded");
-        setIsExporting(false);
-        return;
-      }
+      // Generate CSV content
+      const csvContent = generateCSV(survey, responses);
       
-      // Initialize the auth client
-      await new Promise<void>((resolve) => {
-        window.gapi.load('client:auth2', async () => {
-          try {
-            await window.gapi.client.init({
-              apiKey: API_KEY,
-              clientId: CLIENT_ID,
-              discoveryDocs: DISCOVERY_DOCS,
-              scope: SCOPES
-            });
-            resolve();
-          } catch (error) {
-            console.error("Error initializing Google API client:", error);
-            toast.error("Failed to initialize Google Drive connection");
-            setIsExporting(false);
-          }
-        });
+      // Initialize Google API
+      await new Promise((resolve) => {
+        window.gapi.load('client:auth2', resolve);
       });
       
-      // Sign in if not already
-      if (!window.gapi.auth2.getAuthInstance().isSignedIn.get()) {
+      await window.gapi.client.init({
+        apiKey: 'YOUR_API_KEY', // Replace with your actual API key
+        clientId: 'YOUR_CLIENT_ID', // Replace with your actual client ID
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+        scope: 'https://www.googleapis.com/auth/drive.file',
+      });
+      
+      // Check if user is signed in
+      const isSignedIn = window.gapi.auth2.getAuthInstance().isSignedIn.get();
+      if (!isSignedIn) {
         await window.gapi.auth2.getAuthInstance().signIn();
       }
       
-      // Get survey responses and convert to CSV
-      const responses = getResponsesForSurvey(surveyId);
-      const csvContent = formatResultsToCSV(survey, responses);
-      
-      // Create a file in Google Drive
-      const fileName = `${survey.title} - Survey Results.csv`;
+      // Prepare file metadata and content
+      const filename = `${survey.title.replace(/\s+/g, '_')}_responses.csv`;
       const file = new Blob([csvContent], { type: 'text/csv' });
       
+      // Create multipart request for file upload
       const metadata = {
-        name: fileName,
-        mimeType: 'text/csv'
+        name: filename,
+        mimeType: 'text/csv',
       };
-      
-      // Use the Drive API to create the file
-      const accessToken = window.gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
       
       const form = new FormData();
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', file);
       
+      // Get access token
+      const accessToken = window.gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+      
+      // Upload file to Google Drive
       const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${accessToken}`
+          'Authorization': `Bearer ${accessToken}`,
         },
-        body: form
+        body: form,
       });
       
       if (response.ok) {
         const data = await response.json();
-        toast.success(`Survey results successfully saved to Google Drive as "${fileName}"`);
+        toast.success('Survey exported to Google Drive successfully!');
+        console.log('File uploaded, ID:', data.id);
       } else {
-        console.error("Error uploading to Google Drive:", await response.text());
-        toast.error("Failed to upload to Google Drive");
+        throw new Error('Failed to upload file');
       }
     } catch (error) {
-      console.error("Error exporting to Google Drive:", error);
-      toast.error("Failed to export to Google Drive");
+      console.error('Error exporting to Google Drive:', error);
+      toast.error('Failed to export survey. Please try again.');
     } finally {
       setIsExporting(false);
     }
   };
 
+  // Generate CSV content from survey and responses
+  const generateCSV = (survey: Survey, responses: Response[]): string => {
+    // Headers
+    let csv = 'Respondent ID,Submission Date';
+    
+    survey.questions.forEach(question => {
+      csv += `,${question.text.replace(/,/g, ' ')}`;
+    });
+    
+    csv += '\n';
+    
+    // Rows (responses)
+    responses.forEach(response => {
+      const date = new Date(response.createdAt).toLocaleDateString();
+      
+      // Start with ID and date
+      csv += `${response.id},${date}`;
+      
+      // Add each answer
+      survey.questions.forEach(question => {
+        const answer = response.answers.find(a => a.questionId === question.id);
+        
+        if (!answer) {
+          csv += ',Not answered';
+        } else if (question.type === 'radio' || question.type === 'text' || question.type === 'textarea') {
+          // Text and multiple choice questions
+          csv += `,${answer.value.toString().replace(/,/g, ' ')}`;
+        } else if (question.type === 'checkbox') {
+          // Checkbox questions (multiple answers)
+          if (Array.isArray(answer.value)) {
+            csv += `,${answer.value.join('; ').replace(/,/g, ' ')}`;
+          } else {
+            csv += `,${answer.value.toString().replace(/,/g, ' ')}`;
+          }
+        } else if (question.type === 'rating') {
+          // Rating questions
+          csv += `,${answer.value}`;
+        } else {
+          csv += ',';
+        }
+      });
+      
+      csv += '\n';
+    });
+    
+    return csv;
+  };
+
   return (
-    <Button 
-      onClick={exportToGoogleDrive} 
-      disabled={isExporting}
-      variant="outline"
+    <Button
+      onClick={handleExport}
+      disabled={isExporting || responses.length === 0}
       className={className}
+      variant="outline"
     >
-      <Save className="mr-2 h-4 w-4" />
-      {isExporting ? "Exporting..." : "Save to Google Drive"}
+      {isExporting ? (
+        <>
+          <Upload className="animate-pulse" />
+          Exporting...
+        </>
+      ) : (
+        <>
+          <FileJson />
+          Export to Google Drive
+        </>
+      )}
     </Button>
   );
 };

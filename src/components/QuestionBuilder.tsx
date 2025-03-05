@@ -1,225 +1,266 @@
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Question, QuestionType, Choice } from '@/types';
-import { X, Plus, Trash2, GripVertical } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { Question, QuestionType } from '@/types';
+import { PlusCircle, Trash2, GripVertical, AlertCircle } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Button } from './ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from './ui/switch';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface QuestionBuilderProps {
-  question: Question;
-  onChange: (updatedQuestion: Question) => void;
-  onDelete: () => void;
-  index: number;
+  questions: Question[];
+  onChange: (questions: Question[]) => void;
 }
 
-const QuestionBuilder = ({ question, onChange, onDelete, index }: QuestionBuilderProps) => {
-  const [isOpen, setIsOpen] = useState(true);
-
-  const handleTypeChange = (type: QuestionType) => {
-    let updatedQuestion: Question = { ...question, type };
+const QuestionBuilder = ({ questions, onChange }: QuestionBuilderProps) => {
+  const handleAddQuestion = () => {
+    const newQuestion: Question = {
+      id: crypto.randomUUID(),
+      type: 'text',
+      text: '',
+      required: false,
+    };
     
-    // Initialize choices array if changing to multiple choice or checkbox
-    if ((type === 'multipleChoice' || type === 'checkbox') && !question.choices) {
-      updatedQuestion.choices = [
-        { id: crypto.randomUUID(), text: 'Option 1' },
-        { id: crypto.randomUUID(), text: 'Option 2' }
-      ];
+    onChange([...questions, newQuestion]);
+  };
+  
+  const handleUpdateQuestion = (index: number, updates: Partial<Question>) => {
+    const updatedQuestions = [...questions];
+    
+    // Update the question with the new values
+    updatedQuestions[index] = {
+      ...updatedQuestions[index],
+      ...updates,
+    };
+    
+    // Handle special logic for different question types
+    if (updates.type) {
+      // Reset options when changing question type
+      if (updates.type === 'radio' || updates.type === 'checkbox') {
+        if (!updatedQuestions[index].options || updatedQuestions[index].options?.length === 0) {
+          updatedQuestions[index].options = ['Option 1', 'Option 2'];
+        }
+      } else {
+        // Remove options if changing from radio/checkbox to something else
+        delete updatedQuestions[index].options;
+      }
+      
+      // Set default maxRating for rating questions
+      if (updates.type === 'rating' && !updatedQuestions[index].maxRating) {
+        updatedQuestions[index].maxRating = 5;
+      } else if (updates.type !== 'rating') {
+        // Remove maxRating if not a rating question
+        delete updatedQuestions[index].maxRating;
+      }
     }
     
-    // Initialize maxRating if changing to rating
-    if (type === 'rating' && !question.maxRating) {
-      updatedQuestion.maxRating = 5;
+    onChange(updatedQuestions);
+  };
+  
+  const handleDeleteQuestion = (index: number) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions.splice(index, 1);
+    onChange(updatedQuestions);
+  };
+  
+  const handleAddOption = (questionIndex: number) => {
+    const updatedQuestions = [...questions];
+    const question = updatedQuestions[questionIndex];
+    
+    if (!question.options) {
+      question.options = [];
     }
     
-    onChange(updatedQuestion);
+    question.options.push(`Option ${question.options.length + 1}`);
+    onChange(updatedQuestions);
   };
-
-  const addChoice = () => {
-    if (!question.choices) return;
+  
+  const handleUpdateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    const updatedQuestions = [...questions];
+    const question = updatedQuestions[questionIndex];
     
-    onChange({
-      ...question,
-      choices: [
-        ...question.choices,
-        { id: crypto.randomUUID(), text: `Option ${question.choices.length + 1}` }
-      ]
-    });
+    if (question.options) {
+      question.options[optionIndex] = value;
+      onChange(updatedQuestions);
+    }
   };
-
-  const updateChoice = (id: string, text: string) => {
-    if (!question.choices) return;
+  
+  const handleDeleteOption = (questionIndex: number, optionIndex: number) => {
+    const updatedQuestions = [...questions];
+    const question = updatedQuestions[questionIndex];
     
-    onChange({
-      ...question,
-      choices: question.choices.map(choice => 
-        choice.id === id ? { ...choice, text } : choice
-      )
-    });
+    if (question.options && question.options.length > 1) {
+      question.options.splice(optionIndex, 1);
+      onChange(updatedQuestions);
+    }
   };
-
-  const deleteChoice = (id: string) => {
-    if (!question.choices) return;
+  
+  const handleMaxRatingChange = (questionIndex: number, value: string) => {
+    const numValue = parseInt(value, 10);
+    if (isNaN(numValue) || numValue < 1) return;
     
-    onChange({
-      ...question,
-      choices: question.choices.filter(choice => choice.id !== id)
-    });
+    const updatedQuestions = [...questions];
+    updatedQuestions[questionIndex].maxRating = Math.min(10, numValue);
+    onChange(updatedQuestions);
+  };
+  
+  const moveQuestion = (dragIndex: number, hoverIndex: number) => {
+    const updatedQuestions = [...questions];
+    const draggedQuestion = updatedQuestions[dragIndex];
+    
+    // Remove the dragged question
+    updatedQuestions.splice(dragIndex, 1);
+    // Insert it at the hover position
+    updatedQuestions.splice(hoverIndex, 0, draggedQuestion);
+    
+    onChange(updatedQuestions);
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.3 }}
-      className="relative mb-6 rounded-lg border border-border bg-card shadow-sm"
-    >
-      <div className={cn(
-        "p-4 grid grid-cols-12 gap-4",
-        !isOpen && "border-b border-border"
-      )}>
-        <div className="col-span-1 flex items-center justify-center">
-          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-            {index + 1}
-          </div>
+    <div className="space-y-6 pb-4">
+      {questions.length === 0 ? (
+        <div className="text-center py-8 bg-muted/40 rounded-lg border border-dashed">
+          <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">
+            No questions added yet. Click the button below to add your first question.
+          </p>
         </div>
-        
-        <div className="col-span-10">
-          <input
-            type="text"
-            value={question.text}
-            onChange={(e) => onChange({ ...question, text: e.target.value })}
-            className="w-full bg-transparent font-medium text-card-foreground border-none outline-none focus:ring-0 p-0"
-            placeholder="Question text"
-          />
-        </div>
-        
-        <div className="col-span-1 flex items-center justify-end">
-          <button 
-            onClick={() => setIsOpen(!isOpen)} 
-            className="text-muted-foreground hover:text-primary transition-colors"
+      ) : (
+        questions.map((question, index) => (
+          <motion.div 
+            key={question.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 bg-card border rounded-lg shadow-sm relative"
           >
-            {isOpen ? (
-              <X size={18} />
-            ) : (
-              <Plus size={18} />
-            )}
-          </button>
-        </div>
-      </div>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="p-4 pt-0 overflow-hidden"
-          >
-            <div className="pt-4 border-t border-border space-y-4">
-              <div className="flex flex-wrap gap-3">
-                {(['text', 'multipleChoice', 'checkbox', 'rating'] as QuestionType[]).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => handleTypeChange(type)}
-                    className={cn(
-                      "px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200",
-                      question.type === type 
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    {type === 'text' && 'Text'}
-                    {type === 'multipleChoice' && 'Multiple Choice'}
-                    {type === 'checkbox' && 'Checkboxes'}
-                    {type === 'rating' && 'Rating'}
-                  </button>
-                ))}
+            <div className="flex items-start gap-4">
+              <div className="cursor-move touch-none flex items-center">
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
               </div>
               
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={question.required}
-                    onChange={(e) => onChange({ ...question, required: e.target.checked })}
-                    className="rounded border-gray-300 text-primary focus:ring-primary"
+              <div className="flex-1 space-y-4">
+                <div className="space-y-2">
+                  <Input
+                    value={question.text}
+                    onChange={(e) => handleUpdateQuestion(index, { text: e.target.value })}
+                    placeholder="Question text"
+                    className="font-medium"
                   />
-                  Required
-                </label>
+                  
+                  <div className="flex flex-wrap gap-4">
+                    <div className="w-40">
+                      <Select
+                        value={question.type}
+                        onValueChange={(value) => handleUpdateQuestion(index, { type: value as QuestionType })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Question Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="text">Short Text</SelectItem>
+                          <SelectItem value="textarea">Paragraph</SelectItem>
+                          <SelectItem value="radio">Multiple Choice</SelectItem>
+                          <SelectItem value="checkbox">Checkboxes</SelectItem>
+                          <SelectItem value="rating">Rating</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id={`required-${question.id}`}
+                        checked={question.required}
+                        onCheckedChange={(checked) => handleUpdateQuestion(index, { required: checked })}
+                      />
+                      <Label htmlFor={`required-${question.id}`}>Required</Label>
+                    </div>
+                  </div>
+                </div>
+                
+                {(question.type === 'radio' || question.type === 'checkbox') && question.options && (
+                  <div className="space-y-3 pl-6">
+                    <p className="text-sm font-medium text-muted-foreground">Options:</p>
+                    {question.options.map((option, optionIndex) => (
+                      <div key={optionIndex} className="flex items-center gap-2">
+                        <Input
+                          value={option}
+                          onChange={(e) => handleUpdateOption(index, optionIndex, e.target.value)}
+                          className="flex-1"
+                        />
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteOption(index, optionIndex)}
+                                disabled={question.options && question.options.length <= 1}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete option</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddOption(index)}
+                      className="mt-2"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add Option
+                    </Button>
+                  </div>
+                )}
                 
                 {question.type === 'rating' && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm">Max rating:</label>
-                    <select
-                      value={question.maxRating}
-                      onChange={(e) => onChange({ ...question, maxRating: parseInt(e.target.value) })}
-                      className="bg-transparent border-gray-300 rounded text-sm"
-                    >
-                      {[3, 5, 7, 10].map(num => (
-                        <option key={num} value={num}>{num}</option>
-                      ))}
-                    </select>
+                  <div className="flex items-center gap-4 pl-6">
+                    <p className="text-sm font-medium text-muted-foreground">Max Rating:</p>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={question.maxRating || 5}
+                      onChange={(e) => handleMaxRatingChange(index, e.target.value)}
+                      className="w-20"
+                    />
                   </div>
                 )}
               </div>
               
-              {(question.type === 'multipleChoice' || question.type === 'checkbox') && question.choices && (
-                <div className="space-y-2 mt-4">
-                  <AnimatePresence>
-                    {question.choices.map((choice) => (
-                      <motion.div
-                        key={choice.id}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex items-center gap-2"
-                      >
-                        <span className="text-muted-foreground cursor-move">
-                          <GripVertical size={16} />
-                        </span>
-                        <input
-                          type="text"
-                          value={choice.text}
-                          onChange={(e) => updateChoice(choice.id, e.target.value)}
-                          className="flex-1 bg-background border border-input rounded-md px-3 py-1.5 text-sm focus:ring-1 focus:ring-ring"
-                        />
-                        <button
-                          onClick={() => deleteChoice(choice.id)}
-                          disabled={question.choices!.length <= 2}
-                          className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  
-                  <button
-                    onClick={addChoice}
-                    className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-                  >
-                    <Plus size={14} />
-                    Add option
-                  </button>
-                </div>
-              )}
-              
-              <div className="pt-2 flex justify-end">
-                <button
-                  onClick={onDelete}
-                  className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
-                >
-                  <Trash2 size={14} />
-                  Delete question
-                </button>
-              </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => handleDeleteQuestion(index)}
+              >
+                <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
+              </Button>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+        ))
+      )}
+      
+      <Button onClick={handleAddQuestion} className="w-full" variant="outline">
+        <PlusCircle className="h-4 w-4 mr-2" />
+        Add Question
+      </Button>
+    </div>
   );
 };
 
