@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -24,12 +25,17 @@ const ViewSurvey = () => {
     setIsAdmin(adminPassword === 'fogiking');
     
     if (!id) {
+      console.error('No survey ID provided in URL');
       navigate('/not-found');
       return;
     }
     
+    console.log('Looking for survey with ID:', id);
+    console.log('Available surveys:', surveys);
+    
     const foundSurvey = surveys.find((s) => s.id === id);
     if (foundSurvey) {
+      console.log('Found survey:', foundSurvey);
       setSurvey(foundSurvey);
       setLoading(false);
     } else {

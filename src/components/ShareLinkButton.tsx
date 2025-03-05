@@ -14,8 +14,9 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    // Make sure to use the absolute URL with the correct path format
+    // Ensure we're creating an absolute URL with the correct path
     const surveyUrl = `${window.location.origin}/survey/${surveyId}`;
+    console.log('Sharing survey URL:', surveyUrl); // Debug log
     
     // Use the Web Share API if available
     if (navigator.share) {
@@ -23,7 +24,8 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
         title: 'Take this survey',
         text: 'I\'d like to share this survey with you',
         url: surveyUrl,
-      }).catch(() => {
+      }).catch((error) => {
+        console.error('Share failed:', error);
         // Fallback if share is cancelled or fails
         copyToClipboard(surveyUrl);
       });
@@ -38,11 +40,13 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
       .then(() => {
         setCopied(true);
         toast.success('Survey link copied to clipboard');
+        console.log('Copied to clipboard:', text); // Debug log
         
         // Reset copied state after 2 seconds
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Copy failed:', error);
         toast.error('Failed to copy link');
       });
   };
