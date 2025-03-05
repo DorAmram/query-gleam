@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import Index from "./pages/Index";
 import CreateSurvey from "./pages/CreateSurvey";
@@ -11,14 +11,7 @@ import ViewSurvey from "./pages/ViewSurvey";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
@@ -45,9 +38,7 @@ const App = () => {
             <Route path="/create" element={<CreateSurvey />} />
             <Route path="/survey/:id" element={<ViewSurvey />} />
             <Route path="/results/:id" element={<Results />} />
-            <Route path="/not-found" element={<NotFound />} />
-            {/* Catch all routes and send to NotFound */}
-            <Route path="*" element={<Navigate to="/not-found" replace />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

@@ -19,14 +19,6 @@ interface SurveyCardProps {
 const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: SurveyCardProps) => {
   const { deleteSurvey } = useSurveyStore();
 
-  // Ensure survey ID is valid and log it for debugging
-  if (!survey || !survey.id) {
-    console.error('Invalid survey object or missing ID:', survey);
-    return null;
-  }
-  
-  console.log('Rendering SurveyCard for survey ID:', survey.id);
-
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -36,10 +28,6 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
       toast.success('Survey deleted successfully');
     }
   };
-
-  // Construct the survey URL paths
-  const surveyPath = `/survey/${survey.id}`;
-  const resultsPath = `/results/${survey.id}`;
 
   return (
     <motion.div
@@ -96,7 +84,7 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
 
         <div className="pt-4 flex items-center justify-between gap-2">
           <Link
-            to={surveyPath}
+            to={`/survey/${survey.id}`}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             Take Survey
@@ -106,8 +94,8 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
             <ShareLinkButton surveyId={survey.id} />
             
             <Link
-              to={resultsPath}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              to={`/results/${survey.id}`}
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Results
             </Link>

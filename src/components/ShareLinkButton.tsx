@@ -14,26 +14,16 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    if (!surveyId) {
-      console.error('Invalid survey ID for sharing');
-      toast.error('Cannot share survey: Invalid survey ID');
-      return;
-    }
-    
-    // Create the absolute URL without using URL constructor which might cause issues
-    const origin = window.location.origin;
-    const surveyUrl = `${origin}/survey/${surveyId}`;
-    
-    console.log('Sharing survey URL:', surveyUrl); // Debug log
-    
+    // Create the survey link
+    const surveyUrl = `${window.location.origin}/survey/${surveyId}`;
+
     // Use the Web Share API if available
     if (navigator.share) {
       navigator.share({
         title: 'Take this survey',
         text: 'I\'d like to share this survey with you',
         url: surveyUrl,
-      }).catch((error) => {
-        console.error('Share failed:', error);
+      }).catch(() => {
         // Fallback if share is cancelled or fails
         copyToClipboard(surveyUrl);
       });
@@ -48,13 +38,11 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
       .then(() => {
         setCopied(true);
         toast.success('Survey link copied to clipboard');
-        console.log('Copied to clipboard:', text); // Debug log
         
         // Reset copied state after 2 seconds
         setTimeout(() => setCopied(false), 2000);
       })
-      .catch((error) => {
-        console.error('Copy failed:', error);
+      .catch(() => {
         toast.error('Failed to copy link');
       });
   };

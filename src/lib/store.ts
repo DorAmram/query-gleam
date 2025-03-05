@@ -13,7 +13,7 @@ interface SurveyState {
   setSurvey: (survey: Survey | null) => void;
   addResponse: (response: Response) => void;
   getResponsesForSurvey: (surveyId: string) => Response[];
-  voteForAnswer: (responseId: string, questionId: string) => void;
+  voteForAnswer: (responseId: string, answerId: string) => void;
 }
 
 export const useSurveyStore = create<SurveyState>()(
@@ -45,8 +45,6 @@ export const useSurveyStore = create<SurveyState>()(
         return get().responses.filter((response) => response.surveyId === surveyId);
       },
       voteForAnswer: (responseId, questionId) => set((state) => {
-        console.log(`Store: Voting for answer in response ${responseId}, question ${questionId}`);
-        
         return {
           responses: state.responses.map(response => {
             if (response.id === responseId) {
@@ -54,7 +52,6 @@ export const useSurveyStore = create<SurveyState>()(
                 ...response,
                 answers: response.answers.map(answer => {
                   if (answer.questionId === questionId) {
-                    console.log(`Incrementing vote for question ${questionId} from ${answer.votes || 0} to ${(answer.votes || 0) + 1}`);
                     return {
                       ...answer,
                       votes: (answer.votes || 0) + 1
@@ -71,7 +68,6 @@ export const useSurveyStore = create<SurveyState>()(
     }),
     {
       name: 'survey-storage',
-      version: 1, // Add version to ensure compatibility with previous data
     }
   )
 );
