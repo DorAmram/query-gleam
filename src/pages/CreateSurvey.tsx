@@ -139,8 +139,8 @@ const CreateSurvey = () => {
                 {questions.map((question, index) => (
                   <QuestionBuilder
                     key={question.id}
-                    question={question}
-                    onChange={(updatedQuestion) => updateQuestion(question.id, updatedQuestion)}
+                    questions={[question]} // Fix for QuestionBuilder props
+                    onChange={(updatedQuestion) => updateQuestion(question.id, updatedQuestion[0])} // Fix for QuestionBuilder props
                     onDelete={() => deleteQuestion(question.id)}
                     index={index}
                   />
