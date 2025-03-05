@@ -13,7 +13,7 @@ interface SurveyState {
   setSurvey: (survey: Survey | null) => void;
   addResponse: (response: Response) => void;
   getResponsesForSurvey: (surveyId: string) => Response[];
-  voteForAnswer: (responseId: string, answerId: string) => void;
+  voteForAnswer: (responseId: string, questionId: string) => void;
 }
 
 export const useSurveyStore = create<SurveyState>()(
@@ -38,20 +38,35 @@ export const useSurveyStore = create<SurveyState>()(
         currentSurvey: state.currentSurvey?.id === id ? null : state.currentSurvey
       })),
       setSurvey: (survey) => set(() => ({ currentSurvey: survey })),
-      addResponse: (response) => set((state) => ({
-        responses: [...state.responses, response]
-      })),
+      addResponse: (response) => {
+        // Initialize votes for all answers
+        const responseWithVotes = {
+          ...response,
+          answers: response.answers.map(answer => ({
+            ...answer,
+            votes: answer.votes || 0
+          }))
+        };
+        
+        set((state) => ({
+          responses: [...state.responses, responseWithVotes]
+        }));
+      },
       getResponsesForSurvey: (surveyId) => {
         return get().responses.filter((response) => response.surveyId === surveyId);
       },
-      voteForAnswer: (responseId, questionId) => set((state) => {
-        return {
-          responses: state.responses.map(response => {
+      voteForAnswer: (responseId, questionId) => {
+        console.log(`Voting for answer - Response ID: ${responseId}, Question ID: ${questionId}`);
+        
+        set((state) => {
+          const updatedResponses = state.responses.map(response => {
             if (response.id === responseId) {
+              console.log(`Found matching response: ${response.id}`);
               return {
                 ...response,
                 answers: response.answers.map(answer => {
                   if (answer.questionId === questionId) {
+                    console.log(`Increasing vote for question ${questionId} from ${answer.votes} to ${answer.votes + 1}`);
                     return {
                       ...answer,
                       votes: (answer.votes || 0) + 1
@@ -62,9 +77,12 @@ export const useSurveyStore = create<SurveyState>()(
               };
             }
             return response;
-          })
-        };
-      })
+          });
+          
+          console.log('Updated responses after voting:', updatedResponses);
+          return { responses: updatedResponses };
+        });
+      }
     }),
     {
       name: 'survey-storage',

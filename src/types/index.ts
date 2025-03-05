@@ -27,7 +27,7 @@ export interface Survey {
 export interface Answer {
   questionId: string;
   value: string | string[] | number;
-  votes?: number; // Track votes for this answer
+  votes: number; // Changed from optional to required with default 0
 }
 
 export interface Response {

@@ -23,21 +23,38 @@ const ViewSurvey = () => {
   const [votedAnswers, setVotedAnswers] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    console.log("ViewSurvey component mounted with ID:", id);
     if (!survey) {
+      console.log("Survey not found in store, redirecting to home");
       navigate('/');
       toast.error('Survey not found');
     } else {
+      console.log("Survey found:", survey.title);
       // Initialize answers array
       const initialAnswers: Answer[] = survey.questions.map(q => ({
         questionId: q.id,
         value: q.type === 'checkbox' ? [] : q.type === 'rating' ? 0 : '',
+        votes: 0
       }));
       
       setAnswers(initialAnswers);
       
       // Get previous responses for this survey
       if (id) {
-        setPreviousResponses(getResponsesForSurvey(id));
+        const responses = getResponsesForSurvey(id);
+        console.log(`Found ${responses.length} previous responses for survey ${id}`);
+        setPreviousResponses(responses);
+      }
+
+      // Load voted answers from localStorage
+      const storedVotes = localStorage.getItem(`votedAnswers-${survey.id}`);
+      if (storedVotes) {
+        try {
+          setVotedAnswers(JSON.parse(storedVotes));
+          console.log("Loaded previously voted answers:", storedVotes);
+        } catch (e) {
+          console.error("Error parsing stored votes:", e);
+        }
       }
     }
   }, [survey, navigate, id, getResponsesForSurvey]);
@@ -108,6 +125,7 @@ const ViewSurvey = () => {
     
     // Add to store
     addResponse(response);
+    console.log("Response submitted:", response);
     
     // Show success and redirect
     setTimeout(() => {
@@ -119,8 +137,19 @@ const ViewSurvey = () => {
   const handleVote = (responseId: string, questionId: string) => {
     const voteKey = `${responseId}:${questionId}`;
     if (!votedAnswers[voteKey]) {
+      // Call store function to vote
       voteForAnswer(responseId, questionId);
-      setVotedAnswers(prev => ({ ...prev, [voteKey]: true }));
+      
+      // Update local state to track voted answers
+      const updatedVotes = { ...votedAnswers, [voteKey]: true };
+      setVotedAnswers(updatedVotes);
+      
+      // Save to localStorage to persist across visits
+      localStorage.setItem(`votedAnswers-${survey.id}`, JSON.stringify(updatedVotes));
+      
+      // Update previousResponses to reflect the vote change
+      setPreviousResponses(getResponsesForSurvey(id || ''));
+      
       toast.success('Your vote has been recorded!');
     } else {
       toast.info('You have already voted for this answer');
@@ -192,6 +221,7 @@ const ViewSurvey = () => {
             
             const voteKey = `${responseId}:${answer.questionId}`;
             const hasVoted = votedAnswers[voteKey];
+            const voteCount = answer.votes || 0;
             
             return (
               <div 
@@ -201,7 +231,9 @@ const ViewSurvey = () => {
                 <div className="flex-1">
                   {content}
                   <div className="text-xs text-muted-foreground">
-                    {answer.votes ? `${answer.votes} votes` : 'No votes yet'}
+                    {voteCount > 0 
+                      ? `${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}`
+                      : 'No votes yet'}
                   </div>
                 </div>
                 
@@ -319,7 +351,7 @@ const ViewSurvey = () => {
         return null;
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />
