@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -355,13 +354,12 @@ const ViewSurvey = () => {
               {survey.title}
             </motion.h1>
             
-            <motion.p
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-muted-foreground"
-            >
-              {survey.description}
-            </motion.p>
+              className="text-muted-foreground whitespace-pre-wrap"
+              dangerouslySetInnerHTML={{ __html: survey.description.replace(/\n/g, '<br>') }}
+            />
           </div>
           
           <motion.div

@@ -118,15 +118,15 @@ const CreateSurvey = () => {
                 
                 <div>
                   <label htmlFor="description" className="block text-sm font-medium mb-1">
-                    Description (optional)
+                    Description (supports formatting and line breaks)
                   </label>
                   <textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Enter survey description"
-                    rows={3}
-                    className="w-full bg-background border border-input rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                    rows={5}
+                    className="w-full bg-background border border-input rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                   />
                 </div>
               </div>
