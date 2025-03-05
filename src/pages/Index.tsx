@@ -15,12 +15,12 @@ const Index = () => {
   useEffect(() => {
     // Check if user is admin (you could use a cookie, local storage, or authentication)
     const adminPassword = localStorage.getItem('adminPassword');
-    setIsAdmin(adminPassword === 'admin123'); // Simple password for demonstration
+    setIsAdmin(adminPassword === 'fogiking'); // Updated password
   }, []);
 
   const handleAdminLogin = () => {
     const password = prompt('Enter admin password:');
-    if (password === 'admin123') {
+    if (password === 'fogiking') { // Updated password
       localStorage.setItem('adminPassword', password);
       setIsAdmin(true);
     } else if (password) {
