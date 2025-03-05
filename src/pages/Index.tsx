@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -9,6 +9,29 @@ import { ArrowRight } from 'lucide-react';
 
 const Index = () => {
   const { surveys } = useSurveyStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Simple admin check - in a real app this would use authentication
+  useEffect(() => {
+    // Check if user is admin (you could use a cookie, local storage, or authentication)
+    const adminPassword = localStorage.getItem('adminPassword');
+    setIsAdmin(adminPassword === 'admin123'); // Simple password for demonstration
+  }, []);
+
+  const handleAdminLogin = () => {
+    const password = prompt('Enter admin password:');
+    if (password === 'admin123') {
+      localStorage.setItem('adminPassword', password);
+      setIsAdmin(true);
+    } else if (password) {
+      alert('Incorrect password');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('adminPassword');
+    setIsAdmin(false);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -63,6 +86,22 @@ const Index = () => {
                   Create a Survey
                   <ArrowRight size={16} className="ml-2" />
                 </Link>
+                
+                {isAdmin ? (
+                  <button 
+                    onClick={handleAdminLogout}
+                    className="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-3 text-base font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    Logout as Admin
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleAdminLogin}
+                    className="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-3 text-base font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    Admin Login
+                  </button>
+                )}
               </motion.div>
             </motion.div>
           </div>
@@ -72,7 +111,7 @@ const Index = () => {
               <h2 className="text-2xl font-semibold mb-6">Your Surveys</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {surveys.map((survey) => (
-                  <SurveyCard key={survey.id} survey={survey} />
+                  <SurveyCard key={survey.id} survey={survey} isAdmin={isAdmin} />
                 ))}
               </div>
             </div>

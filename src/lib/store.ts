@@ -33,7 +33,9 @@ export const useSurveyStore = create<SurveyState>()(
         )
       })),
       deleteSurvey: (id) => set((state) => ({
-        surveys: state.surveys.filter((survey) => survey.id !== id)
+        surveys: state.surveys.filter((survey) => survey.id !== id),
+        responses: state.responses.filter((response) => response.surveyId !== id),
+        currentSurvey: state.currentSurvey?.id === id ? null : state.currentSurvey
       })),
       setSurvey: (survey) => set(() => ({ currentSurvey: survey })),
       addResponse: (response) => set((state) => ({

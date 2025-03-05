@@ -4,14 +4,31 @@ import { Survey } from '@/types';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import ShareLinkButton from './ShareLinkButton';
+import { Trash2 } from 'lucide-react';
+import { useSurveyStore } from '@/lib/store';
+import { toast } from 'sonner';
+import { Button } from './ui/button';
 
 interface SurveyCardProps {
   survey: Survey;
   className?: string;
   isCompact?: boolean;
+  isAdmin?: boolean;
 }
 
-const SurveyCard = ({ survey, className, isCompact = false }: SurveyCardProps) => {
+const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: SurveyCardProps) => {
+  const { deleteSurvey } = useSurveyStore();
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (confirm('Are you sure you want to delete this survey? This action cannot be undone.')) {
+      deleteSurvey(survey.id);
+      toast.success('Survey deleted successfully');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -28,9 +45,22 @@ const SurveyCard = ({ survey, className, isCompact = false }: SurveyCardProps) =
       
       <div className="relative space-y-2">
         <div className="space-y-1">
-          <h3 className="font-medium text-xl tracking-tight text-card-foreground">
-            {survey.title}
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium text-xl tracking-tight text-card-foreground">
+              {survey.title}
+            </h3>
+            {isAdmin && (
+              <Button
+                onClick={handleDelete}
+                variant="destructive"
+                size="sm"
+                className="opacity-60 hover:opacity-100"
+                title="Delete Survey"
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </div>
           {!isCompact && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {survey.description}
