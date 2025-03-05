@@ -1,5 +1,5 @@
 
-export type QuestionType = 'text' | 'multipleChoice' | 'checkbox' | 'rating';
+export type QuestionType = 'text' | 'textarea' | 'radio' | 'checkbox' | 'rating';
 
 export interface Choice {
   id: string;
@@ -11,6 +11,7 @@ export interface Question {
   type: QuestionType;
   text: string;
   required: boolean;
+  options?: string[]; // Added options array for radio and checkbox questions
   choices?: Choice[];
   maxRating?: number;
 }
