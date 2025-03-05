@@ -38,6 +38,7 @@ const ViewSurvey = () => {
     // Dump surveys to console to debug
     console.log('All available surveys:', JSON.stringify(surveys));
     
+    // Find survey by ID
     const foundSurvey = surveys.find((s) => s.id === id);
     if (foundSurvey) {
       console.log('Found survey:', foundSurvey);
@@ -45,10 +46,19 @@ const ViewSurvey = () => {
       setLoading(false);
     } else {
       console.error('Survey not found with ID:', id);
-      setError('Survey not found');
+      setError(`Survey not found (ID: ${id})`);
       setLoading(false);
-      // Navigate to not-found page if survey doesn't exist
-      navigate('/not-found', { replace: true });
+      
+      // Wait a moment before navigating to not-found (to ensure state updates)
+      setTimeout(() => {
+        navigate('/not-found', { 
+          replace: true,
+          state: { 
+            errorMessage: `Survey not found with ID: ${id}`,
+            surveyId: id
+          }
+        });
+      }, 300);
     }
   }, [id, surveys, navigate]);
 

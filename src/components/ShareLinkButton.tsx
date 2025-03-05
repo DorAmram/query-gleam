@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,10 +13,9 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    // Properly construct the absolute URL
+    // Create absolute URL with the correct format
     const origin = window.location.origin;
-    const path = `/survey/${surveyId}`;
-    const surveyUrl = new URL(path, origin).href;
+    const surveyUrl = `${origin}/survey/${surveyId}`;
     
     console.log('Sharing survey URL:', surveyUrl); // Debug log
     

@@ -18,7 +18,10 @@ const SurveyCompletionMessage = ({ surveyId, surveyTitle }: SurveyCompletionMess
     // Check if user is admin
     const adminPassword = localStorage.getItem('adminPassword');
     setIsAdmin(adminPassword === 'fogiking');
-  }, []);
+    
+    // Log the survey ID for debugging
+    console.log("SurveyCompletionMessage displaying for survey ID:", surveyId);
+  }, [surveyId]);
 
   return (
     <motion.div

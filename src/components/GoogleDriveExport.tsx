@@ -14,12 +14,14 @@ const GoogleDriveExport = ({ surveyId, className }: GoogleDriveExportProps) => {
   const [isExporting, setIsExporting] = useState(false);
   const { surveys, getResponsesForSurvey } = useSurveyStore();
   
+  // Find survey by ID
   const survey = surveys.find(s => s.id === surveyId);
   const responses = getResponsesForSurvey(surveyId);
   
   const handleExport = async () => {
     if (!survey) {
       toast.error('Survey not found');
+      console.error(`Survey not found with ID: ${surveyId}`);
       return;
     }
     
