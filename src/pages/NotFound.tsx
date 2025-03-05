@@ -27,19 +27,19 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
+      <div className="text-center max-w-md mx-auto px-4">
         <h1 className="text-4xl font-bold mb-4">404</h1>
         <p className="text-xl text-muted-foreground mb-6">The page you're looking for doesn't exist</p>
         
         {isSurveyPath && (
-          <div className="mb-6">
+          <div className="mb-6 p-4 bg-card rounded-lg border">
             <p className="text-sm text-muted-foreground">
               {!surveyExists 
                 ? "The survey you're trying to access doesn't exist or might have been deleted." 
                 : "There was an error accessing this survey."}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Survey ID: {surveyId}
+              Survey ID: <code className="bg-muted px-1 py-0.5 rounded">{surveyId}</code>
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               Please check that you have the correct link.
@@ -49,7 +49,7 @@ const NotFound = () => {
         
         <Link 
           to="/" 
-          className="text-primary hover:text-primary/90 underline"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           Return to Home
         </Link>

@@ -32,14 +32,14 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter basename="/">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/create" element={<CreateSurvey />} />
-            {/* Survey route with UUID parameter */}
             <Route path="/survey/:id" element={<ViewSurvey />} />
             <Route path="/results/:id" element={<Results />} />
             <Route path="/not-found" element={<NotFound />} />
+            {/* Catch all routes and send to NotFound */}
             <Route path="*" element={<Navigate to="/not-found" replace />} />
           </Routes>
         </BrowserRouter>

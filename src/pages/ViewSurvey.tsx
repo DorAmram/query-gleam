@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,7 +10,7 @@ import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
 import { toast } from 'sonner';
 
 const ViewSurvey = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { surveys, addResponse } = useSurveyStore();
   const [survey, setSurvey] = useState<Survey | null>(null);
@@ -28,6 +29,7 @@ const ViewSurvey = () => {
       console.error('No survey ID provided in URL');
       setError('No survey ID provided');
       setLoading(false);
+      navigate('/not-found', { replace: true });
       return;
     }
     
@@ -50,8 +52,13 @@ const ViewSurvey = () => {
     }
   }, [id, surveys, navigate]);
 
-  // If survey not found, show error
-  if (error) {
+  // If loading, show loading state
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
+
+  // If survey not found or error, show error
+  if (error || !survey) {
     return (
       <div className="min-h-screen bg-background pb-20">
         <main className="pt-10 px-6">
@@ -61,26 +68,6 @@ const ViewSurvey = () => {
             <p className="text-sm text-muted-foreground mb-4">
               Survey ID: {id}
             </p>
-            <Link to="/" className="text-primary hover:text-primary/90 underline">
-              Return to Home
-            </Link>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
-  }
-
-  if (!survey) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <main className="pt-10 px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-3xl font-bold mb-4">Survey Not Found</h1>
-            <p className="mb-6">The survey you're looking for doesn't exist or might have been deleted.</p>
             <Link to="/" className="text-primary hover:text-primary/90 underline">
               Return to Home
             </Link>
