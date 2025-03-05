@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -13,7 +14,13 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    // Create absolute URL with the correct format
+    if (!surveyId) {
+      console.error('Invalid survey ID for sharing');
+      toast.error('Cannot share survey: Invalid survey ID');
+      return;
+    }
+    
+    // Create the absolute URL without using URL constructor which might cause issues
     const origin = window.location.origin;
     const surveyUrl = `${origin}/survey/${surveyId}`;
     

@@ -4,21 +4,23 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '@/components/Header';
 import { useSurveyStore } from '@/lib/store';
-import { Survey, Question, Response } from '@/types';
+import { Survey, Question, Response, Answer } from '@/types';
 import { Button } from '@/components/ui/button';
 import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
 import { toast } from 'sonner';
+import { ThumbsUp } from 'lucide-react';
 
 const ViewSurvey = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { surveys, addResponse } = useSurveyStore();
+  const { surveys, addResponse, voteForAnswer } = useSurveyStore();
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
   const [submitted, setSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [responseId, setResponseId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -109,13 +111,17 @@ const ViewSurvey = () => {
       return;
     }
     
-    // Create response object
+    // Create response object with UUID
+    const newResponseId = crypto.randomUUID();
+    setResponseId(newResponseId);
+    
     const response: Response = {
-      id: crypto.randomUUID(),
+      id: newResponseId,
       surveyId: survey.id,
       answers: Object.keys(answers).map((questionId) => ({
         questionId,
         value: answers[questionId],
+        votes: 0 // Initialize votes to 0
       })),
       createdAt: Date.now(),
     };
@@ -127,6 +133,14 @@ const ViewSurvey = () => {
     toast.success('Survey submitted successfully!');
   };
 
+  const handleVote = (questionId: string) => {
+    if (!responseId) return;
+    
+    console.log(`Voting for answer to question ${questionId} in response ${responseId}`);
+    voteForAnswer(responseId, questionId);
+    toast.success('Vote recorded!');
+  };
+
   if (submitted) {
     return (
       <div className="min-h-screen bg-background pb-20">
@@ -134,6 +148,42 @@ const ViewSurvey = () => {
         <main className="pt-10 px-6">
           <div className="max-w-3xl mx-auto">
             <SurveyCompletionMessage surveyId={survey.id} surveyTitle={survey.title} />
+            
+            <div className="mt-8 bg-card rounded-lg border shadow-sm overflow-hidden">
+              <div className="p-6 border-b">
+                <h2 className="text-xl font-bold">Your Answers</h2>
+                <p className="text-muted-foreground mt-2">You can upvote answers that you find particularly important.</p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                {survey.questions.map((question, index) => {
+                  const answer = answers[question.id];
+                  if (!answer) return null;
+                  
+                  return (
+                    <div key={question.id} className="space-y-2">
+                      <div className="font-medium">{index + 1}. {question.text}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="p-3 bg-muted rounded-md flex-grow">
+                          {question.type === 'checkbox' 
+                            ? answer.split(',').filter(Boolean).join(', ') 
+                            : answer}
+                        </div>
+                        <Button 
+                          onClick={() => handleVote(question.id)}
+                          variant="outline" 
+                          size="sm"
+                          className="ml-2"
+                        >
+                          <ThumbsUp className="h-4 w-4 mr-1" />
+                          Upvote
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </main>
       </div>

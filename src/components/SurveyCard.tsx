@@ -19,11 +19,13 @@ interface SurveyCardProps {
 const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: SurveyCardProps) => {
   const { deleteSurvey } = useSurveyStore();
 
-  // Ensure survey ID is valid
+  // Ensure survey ID is valid and log it for debugging
   if (!survey || !survey.id) {
     console.error('Invalid survey object or missing ID:', survey);
     return null;
   }
+  
+  console.log('Rendering SurveyCard for survey ID:', survey.id);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -35,7 +37,7 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
     }
   };
 
-  // Construct the survey URL path explicitly
+  // Construct the survey URL paths
   const surveyPath = `/survey/${survey.id}`;
   const resultsPath = `/results/${survey.id}`;
 

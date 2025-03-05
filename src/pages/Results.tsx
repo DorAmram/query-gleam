@@ -1,11 +1,10 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '@/components/Header';
 import { Survey, Response } from '@/types';
 import { useSurveyStore } from '@/lib/store';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ThumbsUp } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -31,13 +30,24 @@ const Results = () => {
     const adminPassword = localStorage.getItem('adminPassword');
     setIsAdmin(adminPassword === 'fogiking');
     
-    if (!id) return;
+    if (!id) {
+      console.error('No survey ID provided');
+      navigate('/not-found');
+      return;
+    }
     
+    console.log('Results: Looking for survey with ID:', id);
     const foundSurvey = surveys.find((s) => s.id === id);
+    
     if (foundSurvey) {
+      console.log('Results: Found survey:', foundSurvey);
       setSurvey(foundSurvey);
-      setResponses(getResponsesForSurvey(foundSurvey.id));
+      
+      const surveyResponses = getResponsesForSurvey(foundSurvey.id);
+      console.log(`Results: Found ${surveyResponses.length} responses for survey`);
+      setResponses(surveyResponses);
     } else {
+      console.error('Results: Survey not found with ID:', id);
       navigate('/not-found');
     }
   }, [id, surveys, navigate, getResponsesForSurvey]);
@@ -48,30 +58,38 @@ const Results = () => {
 
   // Calculate percentages and counts for each question
   const calculateResults = () => {
+    
     const results = survey.questions.map(question => {
       if (question.type === 'text' || question.type === 'textarea') {
-        // For text questions, just collect all answers
-        const answers = responses
-          .map(response => {
+        // For text questions, collect all answers and their votes
+        const answersWithVotes = responses
+          .flatMap(response => {
             const answer = response.answers.find(a => a.questionId === question.id);
-            return answer ? answer.value.toString() : null;
-          })
-          .filter(Boolean) as string[];
+            if (!answer) return [];
+            
+            return [{
+              text: answer.value.toString(),
+              votes: answer.votes || 0
+            }];
+          });
           
         return {
           question,
-          answers,
-          totalResponses: answers.length
+          answersWithVotes,
+          totalResponses: answersWithVotes.length
         };
       } else if (question.type === 'radio') {
+        
         // For multiple choice, count occurrences of each option
         const counts: Record<string, number> = {};
+        const votesByOption: Record<string, number> = {};
         let totalAnswers = 0;
         
         if (question.options) {
           // Initialize counts for all options
           question.options.forEach(option => {
             counts[option] = 0;
+            votesByOption[option] = 0;
           });
         }
         
@@ -80,6 +98,7 @@ const Results = () => {
           const answer = response.answers.find(a => a.questionId === question.id);
           if (answer && answer.value) {
             counts[answer.value.toString()] = (counts[answer.value.toString()] || 0) + 1;
+            votesByOption[answer.value.toString()] = (votesByOption[answer.value.toString()] || 0) + (answer.votes || 0);
             totalAnswers++;
           }
         });
@@ -88,6 +107,7 @@ const Results = () => {
         const data = Object.keys(counts).map(key => ({
           name: key,
           value: counts[key],
+          votes: votesByOption[key],
           percentage: totalAnswers > 0 ? Math.round((counts[key] / totalAnswers) * 100) : 0
         }));
         
@@ -97,13 +117,16 @@ const Results = () => {
           totalResponses: totalAnswers
         };
       } else if (question.type === 'checkbox') {
+        
         // For checkboxes, count each option selection
         const counts: Record<string, number> = {};
+        const votesByOption: Record<string, number> = {};
         
         if (question.options) {
           // Initialize counts for all options
           question.options.forEach(option => {
             counts[option] = 0;
+            votesByOption[option] = 0;
           });
         }
         
@@ -113,7 +136,11 @@ const Results = () => {
           if (answer && answer.value) {
             const selected = answer.value.toString().split(',');
             selected.forEach(option => {
-              if (option) counts[option] = (counts[option] || 0) + 1;
+              if (option) {
+                counts[option] = (counts[option] || 0) + 1;
+                // Add votes to each selected option
+                votesByOption[option] = (votesByOption[option] || 0) + (answer.votes || 0);
+              }
             });
           }
         });
@@ -122,6 +149,7 @@ const Results = () => {
         const data = Object.keys(counts).map(key => ({
           name: key,
           value: counts[key],
+          votes: votesByOption[key],
           percentage: responses.length > 0 ? Math.round((counts[key] / responses.length) * 100) : 0
         }));
         
@@ -131,14 +159,17 @@ const Results = () => {
           totalResponses: responses.length
         };
       } else if (question.type === 'rating') {
+        
         // For rating questions, count occurrences of each rating
         const counts: Record<string, number> = {};
+        const votesByRating: Record<string, number> = {};
         let totalAnswers = 0;
         let sum = 0;
         
         // Initialize counts for all possible ratings (1 to maxRating)
         for (let i = 1; i <= (question.maxRating || 5); i++) {
           counts[i.toString()] = 0;
+          votesByRating[i.toString()] = 0;
         }
         
         // Count responses
@@ -147,6 +178,7 @@ const Results = () => {
           if (answer && answer.value) {
             const rating = parseInt(answer.value.toString(), 10);
             counts[rating.toString()] = (counts[rating.toString()] || 0) + 1;
+            votesByRating[rating.toString()] = (votesByRating[rating.toString()] || 0) + (answer.votes || 0);
             sum += rating;
             totalAnswers++;
           }
@@ -156,6 +188,7 @@ const Results = () => {
         const data = Object.keys(counts).map(key => ({
           name: key,
           value: counts[key],
+          votes: votesByRating[key],
           percentage: totalAnswers > 0 ? Math.round((counts[key] / totalAnswers) * 100) : 0
         }));
         
@@ -235,10 +268,16 @@ const Results = () => {
                       <CardContent>
                         {(result.question.type === 'text' || result.question.type === 'textarea') && (
                           <div className="space-y-2">
-                            {result.answers && result.answers.length > 0 ? (
-                              result.answers.map((answer, i) => (
-                                <div key={i} className="p-3 bg-muted rounded-md">
-                                  {answer}
+                            {result.answersWithVotes && result.answersWithVotes.length > 0 ? (
+                              result.answersWithVotes.map((answer, i) => (
+                                <div key={i} className="p-3 bg-muted rounded-md flex justify-between items-center">
+                                  <div>{answer.text}</div>
+                                  {answer.votes > 0 && (
+                                    <div className="flex items-center text-muted-foreground text-sm">
+                                      <ThumbsUp className="h-3 w-3 mr-1" />
+                                      {answer.votes}
+                                    </div>
+                                  )}
                                 </div>
                               ))
                             ) : (
@@ -281,8 +320,16 @@ const Results = () => {
                                     />
                                     <span>{item.name}</span>
                                   </div>
-                                  <div className="font-medium">
-                                    {item.value} ({item.percentage}%)
+                                  <div className="flex items-center gap-3">
+                                    <div className="font-medium">
+                                      {item.value} ({item.percentage}%)
+                                    </div>
+                                    {item.votes > 0 && (
+                                      <div className="flex items-center text-muted-foreground text-sm bg-muted px-2 py-1 rounded">
+                                        <ThumbsUp className="h-3 w-3 mr-1" />
+                                        {item.votes}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -308,6 +355,27 @@ const Results = () => {
                                   <Bar dataKey="value" fill="#3b82f6" />
                                 </BarChart>
                               </ResponsiveContainer>
+                            </div>
+                            
+                            <div className="space-y-2 mt-4">
+                              {result.data.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <span>Rating: {item.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <div className="font-medium">
+                                      {item.value} ({item.percentage}%)
+                                    </div>
+                                    {item.votes > 0 && (
+                                      <div className="flex items-center text-muted-foreground text-sm bg-muted px-2 py-1 rounded">
+                                        <ThumbsUp className="h-3 w-3 mr-1" />
+                                        {item.votes}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
