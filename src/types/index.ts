@@ -35,3 +35,35 @@ export interface Response {
   answers: Answer[];
   createdAt: number;
 }
+
+// Google API type declarations
+declare global {
+  interface Window {
+    gapi: {
+      load: (api: string, callback: () => void) => void;
+      client: {
+        init: (config: {
+          apiKey: string;
+          clientId: string;
+          discoveryDocs: string[];
+          scope: string;
+        }) => Promise<void>;
+      };
+      auth2: {
+        getAuthInstance: () => {
+          isSignedIn: {
+            get: () => boolean;
+          };
+          signIn: () => Promise<void>;
+          currentUser: {
+            get: () => {
+              getAuthResponse: () => {
+                access_token: string;
+              };
+            };
+          };
+        };
+      };
+    };
+  }
+}
