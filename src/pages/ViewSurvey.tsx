@@ -7,18 +7,21 @@ import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
 import { useSurveyStore } from '@/lib/store';
 import { Answer, Question, Response } from '@/types';
 import { toast } from 'sonner';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ThumbsUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const ViewSurvey = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { surveys, addResponse } = useSurveyStore();
+  const { surveys, addResponse, getResponsesForSurvey, voteForAnswer } = useSurveyStore();
   
   const [survey, setSurvey] = useState(surveys.find(s => s.id === id));
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [previousResponses, setPreviousResponses] = useState<Response[]>([]);
+  const [votedAnswers, setVotedAnswers] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!survey) {
@@ -32,8 +35,13 @@ const ViewSurvey = () => {
       }));
       
       setAnswers(initialAnswers);
+      
+      // Get previous responses for this survey
+      if (id) {
+        setPreviousResponses(getResponsesForSurvey(id));
+      }
     }
-  }, [survey, navigate]);
+  }, [survey, navigate, id, getResponsesForSurvey]);
 
   if (!survey) return null;
 
@@ -107,6 +115,115 @@ const ViewSurvey = () => {
       setIsSubmitting(false);
       setIsCompleted(true);
     }, 1000);
+  };
+
+  const handleVote = (responseId: string, questionId: string) => {
+    const voteKey = `${responseId}:${questionId}`;
+    if (!votedAnswers[voteKey]) {
+      voteForAnswer(responseId, questionId);
+      setVotedAnswers(prev => ({ ...prev, [voteKey]: true }));
+      toast.success('Your vote has been recorded!');
+    } else {
+      toast.info('You have already voted for this answer');
+    }
+  };
+
+  const getResponsesForQuestion = (questionId: string) => {
+    return previousResponses
+      .map(response => ({
+        responseId: response.id,
+        answer: response.answers.find(a => a.questionId === questionId)
+      }))
+      .filter(item => item.answer !== undefined);
+  };
+
+  const renderPreviousAnswers = () => {
+    const responses = getResponsesForQuestion(currentQuestion.id);
+    
+    if (responses.length === 0) return null;
+    
+    return (
+      <div className="mt-8 space-y-4">
+        <h3 className="text-lg font-medium">Previous answers</h3>
+        <div className="space-y-3">
+          {responses.map(({ responseId, answer }) => {
+            if (!answer) return null;
+            
+            let content;
+            
+            switch (currentQuestion.type) {
+              case 'text':
+                content = <p className="mb-2">{answer.value as string}</p>;
+                break;
+              case 'multipleChoice':
+                const selectedChoice = currentQuestion.choices?.find(c => c.id === answer.value);
+                content = <p className="mb-2">{selectedChoice?.text}</p>;
+                break;
+              case 'checkbox':
+                const selectedChoices = currentQuestion.choices?.filter(c => 
+                  (answer.value as string[]).includes(c.id)
+                );
+                content = (
+                  <div className="mb-2">
+                    {selectedChoices?.map(choice => (
+                      <div key={choice.id} className="text-sm">{choice.text}</div>
+                    ))}
+                  </div>
+                );
+                break;
+              case 'rating':
+                content = (
+                  <div className="flex items-center mb-2">
+                    {Array.from({ length: currentQuestion.maxRating || 5 }).map((_, i) => (
+                      <span 
+                        key={i}
+                        className={`w-6 h-6 flex items-center justify-center rounded-full text-xs mr-1 ${
+                          (answer.value as number) >= i + 1
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary'
+                        }`}
+                      >
+                        {i + 1}
+                      </span>
+                    ))}
+                  </div>
+                );
+                break;
+            }
+            
+            const voteKey = `${responseId}:${answer.questionId}`;
+            const hasVoted = votedAnswers[voteKey];
+            
+            return (
+              <div 
+                key={responseId} 
+                className="p-4 border rounded-md bg-card flex justify-between items-start gap-4"
+              >
+                <div className="flex-1">
+                  {content}
+                  <div className="text-xs text-muted-foreground">
+                    {answer.votes ? `${answer.votes} votes` : 'No votes yet'}
+                  </div>
+                </div>
+                
+                <Button
+                  onClick={() => handleVote(responseId, answer.questionId)}
+                  variant={hasVoted ? "secondary" : "outline"}
+                  size="sm"
+                  className="flex-shrink-0"
+                  disabled={hasVoted}
+                >
+                  <ThumbsUp size={16} className={hasVoted ? "text-primary" : ""} />
+                  <span className="ml-1">
+                    {hasVoted ? 'Voted' : 'Vote'}
+                  </span>
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const renderQuestionInput = () => {
@@ -267,7 +384,9 @@ const ViewSurvey = () => {
             </div>
           </motion.div>
           
-          <div className="flex justify-between">
+          {renderPreviousAnswers()}
+          
+          <div className="flex justify-between mt-6">
             <button
               onClick={handlePrevious}
               disabled={currentStep === 0}

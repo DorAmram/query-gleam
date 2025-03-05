@@ -27,6 +27,7 @@ export interface Survey {
 export interface Answer {
   questionId: string;
   value: string | string[] | number;
+  votes?: number; // Track votes for this answer
 }
 
 export interface Response {

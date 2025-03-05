@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Survey, Response } from '@/types';
+import { Survey, Response, Answer } from '@/types';
 
 interface SurveyState {
   surveys: Survey[];
@@ -13,6 +13,7 @@ interface SurveyState {
   setSurvey: (survey: Survey | null) => void;
   addResponse: (response: Response) => void;
   getResponsesForSurvey: (surveyId: string) => Response[];
+  voteForAnswer: (responseId: string, answerId: string) => void;
 }
 
 export const useSurveyStore = create<SurveyState>()(
@@ -40,7 +41,28 @@ export const useSurveyStore = create<SurveyState>()(
       })),
       getResponsesForSurvey: (surveyId) => {
         return get().responses.filter((response) => response.surveyId === surveyId);
-      }
+      },
+      voteForAnswer: (responseId, questionId) => set((state) => {
+        return {
+          responses: state.responses.map(response => {
+            if (response.id === responseId) {
+              return {
+                ...response,
+                answers: response.answers.map(answer => {
+                  if (answer.questionId === questionId) {
+                    return {
+                      ...answer,
+                      votes: (answer.votes || 0) + 1
+                    };
+                  }
+                  return answer;
+                })
+              };
+            }
+            return response;
+          })
+        };
+      })
     }),
     {
       name: 'survey-storage',
