@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -46,8 +45,10 @@ const ViewSurvey = () => {
       console.error('Survey not found with ID:', id);
       setError('Survey not found');
       setLoading(false);
+      // Navigate to not-found page if survey doesn't exist
+      navigate('/not-found', { replace: true });
     }
-  }, [id, surveys]);
+  }, [id, surveys, navigate]);
 
   // If survey not found, show error
   if (error) {

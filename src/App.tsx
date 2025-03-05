@@ -36,6 +36,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/create" element={<CreateSurvey />} />
+            {/* Survey route with UUID parameter */}
             <Route path="/survey/:id" element={<ViewSurvey />} />
             <Route path="/results/:id" element={<Results />} />
             <Route path="/not-found" element={<NotFound />} />

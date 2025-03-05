@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -73,9 +72,12 @@ const CreateSurvey = () => {
       return;
     }
     
-    // Create the survey
+    // Generate a UUID for the survey
+    const surveyId = crypto.randomUUID();
+    
+    // Create the survey with the generated UUID
     const survey: Survey = {
-      id: crypto.randomUUID(),
+      id: surveyId,
       title,
       description,
       questions,
@@ -89,8 +91,8 @@ const CreateSurvey = () => {
     // Show success message
     toast.success('Survey created successfully');
     
-    // Navigate to survey page
-    navigate(`/survey/${survey.id}`);
+    // Navigate to survey page using the UUID
+    navigate(`/survey/${surveyId}`);
   };
   
   // Check if there are any multiple choice or checkbox questions with less than 2 options
