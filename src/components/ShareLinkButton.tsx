@@ -14,7 +14,7 @@ const ShareLinkButton = ({ surveyId, className, compact = false }: ShareLinkButt
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    // Create the survey link with absolute URL to ensure it works in all contexts
+    // Make sure to use the absolute URL with the correct path format
     const surveyUrl = `${window.location.origin}/survey/${surveyId}`;
     
     // Use the Web Share API if available

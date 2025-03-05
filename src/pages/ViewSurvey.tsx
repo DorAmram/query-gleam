@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -17,18 +16,24 @@ const ViewSurvey = () => {
   const [answers, setAnswers] = useState<{[key: string]: string}>({});
   const [submitted, setSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is admin
     const adminPassword = localStorage.getItem('adminPassword');
     setIsAdmin(adminPassword === 'fogiking');
     
-    if (!id) return;
+    if (!id) {
+      navigate('/not-found');
+      return;
+    }
     
     const foundSurvey = surveys.find((s) => s.id === id);
     if (foundSurvey) {
       setSurvey(foundSurvey);
+      setLoading(false);
     } else {
+      console.error('Survey not found with ID:', id);
       navigate('/not-found');
     }
   }, [id, surveys, navigate]);
@@ -73,8 +78,12 @@ const ViewSurvey = () => {
     toast.success('Survey submitted successfully!');
   };
 
-  if (!survey) {
+  if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
+
+  if (!survey) {
+    return <div className="flex justify-center items-center min-h-screen">Survey not found</div>;
   }
 
   if (submitted) {
