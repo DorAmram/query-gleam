@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -141,7 +140,6 @@ const CreateSurvey = () => {
                     key={question.id}
                     questions={[question]} 
                     onChange={(updatedQuestion) => updateQuestion(question.id, updatedQuestion[0])}
-                    onDelete={() => deleteQuestion(question.id)}
                     index={index}
                   />
                 ))}

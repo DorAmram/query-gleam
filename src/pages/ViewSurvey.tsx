@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '@/components/Header';
 import { useSurveyStore } from '@/lib/store';
@@ -18,6 +18,7 @@ const ViewSurvey = () => {
   const [submitted, setSubmitted] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is admin
@@ -26,12 +27,12 @@ const ViewSurvey = () => {
     
     if (!id) {
       console.error('No survey ID provided in URL');
-      navigate('/not-found');
+      setError('No survey ID provided');
+      setLoading(false);
       return;
     }
     
     console.log('Looking for survey with ID:', id);
-    console.log('Available surveys:', surveys);
     
     const foundSurvey = surveys.find((s) => s.id === id);
     if (foundSurvey) {
@@ -40,9 +41,27 @@ const ViewSurvey = () => {
       setLoading(false);
     } else {
       console.error('Survey not found with ID:', id);
-      navigate('/not-found');
+      setError('Survey not found');
+      setLoading(false);
     }
-  }, [id, surveys, navigate]);
+  }, [id, surveys]);
+
+  // If survey not found, show error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <main className="pt-10 px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl font-bold mb-4">Survey Not Found</h1>
+            <p className="mb-6">The survey you're looking for doesn't exist or might have been deleted.</p>
+            <Link to="/" className="text-primary hover:text-primary/90 underline">
+              Return to Home
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const handleInputChange = (questionId: string, value: string) => {
     setAnswers({
