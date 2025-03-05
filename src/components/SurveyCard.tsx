@@ -29,6 +29,12 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
     }
   };
 
+  // Ensure survey ID is valid
+  if (!survey || !survey.id) {
+    console.error('Invalid survey object or missing ID:', survey);
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -95,7 +101,7 @@ const SurveyCard = ({ survey, className, isCompact = false, isAdmin = false }: S
             
             <Link
               to={`/results/${survey.id}`}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               Results
             </Link>

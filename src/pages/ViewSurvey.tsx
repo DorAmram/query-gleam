@@ -34,6 +34,9 @@ const ViewSurvey = () => {
     
     console.log('Looking for survey with ID:', id);
     
+    // Dump surveys to console to debug
+    console.log('All available surveys:', JSON.stringify(surveys));
+    
     const foundSurvey = surveys.find((s) => s.id === id);
     if (foundSurvey) {
       console.log('Found survey:', foundSurvey);
@@ -48,6 +51,29 @@ const ViewSurvey = () => {
 
   // If survey not found, show error
   if (error) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <main className="pt-10 px-6">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl font-bold mb-4">Survey Not Found</h1>
+            <p className="mb-6">The survey you're looking for doesn't exist or might have been deleted.</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Survey ID: {id}
+            </p>
+            <Link to="/" className="text-primary hover:text-primary/90 underline">
+              Return to Home
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
+
+  if (!survey) {
     return (
       <div className="min-h-screen bg-background pb-20">
         <main className="pt-10 px-6">
@@ -102,14 +128,6 @@ const ViewSurvey = () => {
     
     toast.success('Survey submitted successfully!');
   };
-
-  if (loading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
-  }
-
-  if (!survey) {
-    return <div className="flex justify-center items-center min-h-screen">Survey not found</div>;
-  }
 
   if (submitted) {
     return (

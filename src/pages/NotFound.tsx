@@ -13,12 +13,17 @@ const NotFound = () => {
   const surveyExists = surveyId ? surveys.some(s => s.id === surveyId) : false;
 
   useEffect(() => {
+    // More detailed logging for debugging
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname,
       isSurveyPath ? `| Looking for survey ID: ${surveyId} | Survey exists: ${surveyExists}` : ''
     );
-  }, [location.pathname, isSurveyPath, surveyId, surveyExists]);
+    
+    if (isSurveyPath) {
+      console.log('All available surveys:', JSON.stringify(surveys));
+    }
+  }, [location.pathname, isSurveyPath, surveyId, surveyExists, surveys]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -32,6 +37,9 @@ const NotFound = () => {
               {!surveyExists 
                 ? "The survey you're trying to access doesn't exist or might have been deleted." 
                 : "There was an error accessing this survey."}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Survey ID: {surveyId}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               Please check that you have the correct link.
