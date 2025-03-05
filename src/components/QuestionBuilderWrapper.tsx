@@ -21,6 +21,7 @@ const QuestionBuilderWrapper = ({
       <QuestionBuilder
         questions={questions}
         onChange={onChange}
+        onDelete={onDelete}
         index={index}
       />
       <button
