@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '@/components/Header';
+import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
 import { useSurveyStore } from '@/lib/store';
 import { Answer, Question, Response } from '@/types';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ const ViewSurvey = () => {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     if (!survey) {
@@ -34,6 +36,17 @@ const ViewSurvey = () => {
   }, [survey, navigate]);
 
   if (!survey) return null;
+
+  if (isCompleted) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-24 px-6 pb-20">
+          <SurveyCompletionMessage surveyId={survey.id} surveyTitle={survey.title} />
+        </main>
+      </div>
+    );
+  }
 
   const currentQuestion = survey.questions[currentStep];
 
@@ -91,9 +104,8 @@ const ViewSurvey = () => {
     
     // Show success and redirect
     setTimeout(() => {
-      toast.success('Response submitted successfully');
-      navigate('/');
       setIsSubmitting(false);
+      setIsCompleted(true);
     }, 1000);
   };
 
