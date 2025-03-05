@@ -1,4 +1,5 @@
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
@@ -11,6 +12,14 @@ interface SurveyCompletionMessageProps {
 }
 
 const SurveyCompletionMessage = ({ surveyId, surveyTitle }: SurveyCompletionMessageProps) => {
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // Check if user is admin
+    const adminPassword = localStorage.getItem('adminPassword');
+    setIsAdmin(adminPassword === 'fogiking');
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -35,16 +44,18 @@ const SurveyCompletionMessage = ({ surveyId, surveyTitle }: SurveyCompletionMess
               className="w-full sm:w-auto flex-1 justify-center"
             />
             
-            <Link
-              to="/"
-              className="w-full sm:w-auto flex-1 inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <ArrowLeft size={16} className="mr-2" />
-              Back to Home
-            </Link>
+            {isAdmin && (
+              <Link
+                to="/"
+                className="w-full sm:w-auto flex-1 inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <ArrowLeft size={16} className="mr-2" />
+                Back to Home
+              </Link>
+            )}
           </div>
           
-          <GoogleDriveExport surveyId={surveyId} className="w-full" />
+          {isAdmin && <GoogleDriveExport surveyId={surveyId} className="w-full" />}
         </div>
       </div>
     </motion.div>

@@ -1,411 +1,200 @@
-import { useState, useEffect } from 'react';
+
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from '@/components/Header';
-import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
 import { useSurveyStore } from '@/lib/store';
-import { Answer, Question, Response } from '@/types';
-import { toast } from 'sonner';
-import { ArrowRight, ThumbsUp } from 'lucide-react';
+import { Survey, Question, Response } from '@/types';
 import { Button } from '@/components/ui/button';
+import SurveyCompletionMessage from '@/components/SurveyCompletionMessage';
+import { toast } from 'sonner';
 
 const ViewSurvey = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { surveys, addResponse, getResponsesForSurvey, voteForAnswer } = useSurveyStore();
-  
-  const [survey, setSurvey] = useState(surveys.find(s => s.id === id));
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [previousResponses, setPreviousResponses] = useState<Response[]>([]);
-  const [votedAnswers, setVotedAnswers] = useState<Record<string, boolean>>({});
+  const { surveys, addResponse } = useSurveyStore();
+  const [survey, setSurvey] = useState<Survey | null>(null);
+  const [answers, setAnswers] = useState<{[key: string]: string}>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!survey) {
-      navigate('/');
-      toast.error('Survey not found');
-    } else {
-      // Initialize answers array
-      const initialAnswers: Answer[] = survey.questions.map(q => ({
-        questionId: q.id,
-        value: q.type === 'checkbox' ? [] : q.type === 'rating' ? 0 : '',
-      }));
-      
-      setAnswers(initialAnswers);
-      
-      // Get previous responses for this survey
-      if (id) {
-        setPreviousResponses(getResponsesForSurvey(id));
-      }
-    }
-  }, [survey, navigate, id, getResponsesForSurvey]);
-
-  if (!survey) return null;
-
-  if (isCompleted) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="pt-24 px-6 pb-20">
-          <SurveyCompletionMessage surveyId={survey.id} surveyTitle={survey.title} />
-        </main>
-      </div>
-    );
-  }
-
-  const currentQuestion = survey.questions[currentStep];
-
-  const updateAnswer = (value: string | string[] | number) => {
-    setAnswers(
-      answers.map(a => 
-        a.questionId === currentQuestion.id 
-          ? { ...a, value } 
-          : a
-      )
-    );
-  };
-
-  const handleNext = () => {
-    // Validate current answer if required
-    const currentAnswer = answers.find(a => a.questionId === currentQuestion.id);
+    // Check if user is admin
+    const adminPassword = localStorage.getItem('adminPassword');
+    setIsAdmin(adminPassword === 'fogiking');
     
-    if (currentQuestion.required) {
-      if (
-        currentAnswer?.value === '' || 
-        (Array.isArray(currentAnswer?.value) && currentAnswer.value.length === 0) ||
-        (currentQuestion.type === 'rating' && currentAnswer?.value === 0)
-      ) {
-        toast.error('This question requires an answer');
-        return;
-      }
-    }
+    if (!id) return;
     
-    if (currentStep < survey.questions.length - 1) {
-      setCurrentStep(currentStep + 1);
+    const foundSurvey = surveys.find((s) => s.id === id);
+    if (foundSurvey) {
+      setSurvey(foundSurvey);
     } else {
-      handleSubmit();
+      navigate('/not-found');
     }
+  }, [id, surveys, navigate]);
+
+  const handleInputChange = (questionId: string, value: string) => {
+    setAnswers({
+      ...answers,
+      [questionId]: value,
+    });
   };
 
-  const handlePrevious = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!survey) return;
+    
+    // Validate required fields
+    const missingRequired = survey.questions
+      .filter((q) => q.required)
+      .some((q) => !answers[q.id] || answers[q.id].trim() === '');
+    
+    if (missingRequired) {
+      toast.error('Please answer all required questions');
+      return;
     }
-  };
-
-  const handleSubmit = () => {
-    setIsSubmitting(true);
     
     // Create response object
     const response: Response = {
       id: crypto.randomUUID(),
       surveyId: survey.id,
-      answers,
+      answers: Object.keys(answers).map((questionId) => ({
+        questionId,
+        value: answers[questionId],
+      })),
       createdAt: Date.now(),
     };
     
-    // Add to store
+    // Add response to store
     addResponse(response);
+    setSubmitted(true);
     
-    // Show success and redirect
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsCompleted(true);
-    }, 1000);
+    toast.success('Survey submitted successfully!');
   };
 
-  const handleVote = (responseId: string, questionId: string) => {
-    const voteKey = `${responseId}:${questionId}`;
-    if (!votedAnswers[voteKey]) {
-      voteForAnswer(responseId, questionId);
-      setVotedAnswers(prev => ({ ...prev, [voteKey]: true }));
-      toast.success('Your vote has been recorded!');
-    } else {
-      toast.info('You have already voted for this answer');
-    }
-  };
+  if (!survey) {
+    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+  }
 
-  const getResponsesForQuestion = (questionId: string) => {
-    return previousResponses
-      .map(response => ({
-        responseId: response.id,
-        answer: response.answers.find(a => a.questionId === questionId)
-      }))
-      .filter(item => item.answer !== undefined);
-  };
-
-  const renderPreviousAnswers = () => {
-    const responses = getResponsesForQuestion(currentQuestion.id);
-    
-    if (responses.length === 0) return null;
-    
+  if (submitted) {
     return (
-      <div className="mt-8 space-y-4">
-        <h3 className="text-lg font-medium">Previous answers</h3>
-        <div className="space-y-3">
-          {responses.map(({ responseId, answer }) => {
-            if (!answer) return null;
-            
-            let content;
-            
-            switch (currentQuestion.type) {
-              case 'text':
-                content = <p className="mb-2">{answer.value as string}</p>;
-                break;
-              case 'multipleChoice':
-                const selectedChoice = currentQuestion.choices?.find(c => c.id === answer.value);
-                content = <p className="mb-2">{selectedChoice?.text}</p>;
-                break;
-              case 'checkbox':
-                const selectedChoices = currentQuestion.choices?.filter(c => 
-                  (answer.value as string[]).includes(c.id)
-                );
-                content = (
-                  <div className="mb-2">
-                    {selectedChoices?.map(choice => (
-                      <div key={choice.id} className="text-sm">{choice.text}</div>
-                    ))}
-                  </div>
-                );
-                break;
-              case 'rating':
-                content = (
-                  <div className="flex items-center mb-2">
-                    {Array.from({ length: currentQuestion.maxRating || 5 }).map((_, i) => (
-                      <span 
-                        key={i}
-                        className={`w-6 h-6 flex items-center justify-center rounded-full text-xs mr-1 ${
-                          (answer.value as number) >= i + 1
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-secondary'
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                    ))}
-                  </div>
-                );
-                break;
-            }
-            
-            const voteKey = `${responseId}:${answer.questionId}`;
-            const hasVoted = votedAnswers[voteKey];
-            
-            return (
-              <div 
-                key={responseId} 
-                className="p-4 border rounded-md bg-card flex justify-between items-start gap-4"
-              >
-                <div className="flex-1">
-                  {content}
-                  <div className="text-xs text-muted-foreground">
-                    {answer.votes ? `${answer.votes} votes` : 'No votes yet'}
-                  </div>
-                </div>
-                
-                <Button
-                  onClick={() => handleVote(responseId, answer.questionId)}
-                  variant={hasVoted ? "secondary" : "outline"}
-                  size="sm"
-                  className="flex-shrink-0"
-                  disabled={hasVoted}
-                >
-                  <ThumbsUp size={16} className={hasVoted ? "text-primary" : ""} />
-                  <span className="ml-1">
-                    {hasVoted ? 'Voted' : 'Vote'}
-                  </span>
-                </Button>
-              </div>
-            );
-          })}
-        </div>
+      <div className="min-h-screen bg-background pb-20">
+        {isAdmin && <Header />}
+        <main className="pt-10 px-6">
+          <div className="max-w-3xl mx-auto">
+            <SurveyCompletionMessage surveyId={survey.id} surveyTitle={survey.title} />
+          </div>
+        </main>
       </div>
     );
-  };
-
-  const renderQuestionInput = () => {
-    const answer = answers.find(a => a.questionId === currentQuestion.id);
-    if (!answer) return null;
-    
-    switch (currentQuestion.type) {
-      case 'text':
-        return (
-          <textarea
-            value={answer.value as string}
-            onChange={e => updateAnswer(e.target.value)}
-            placeholder="Type your answer here..."
-            rows={4}
-            className="w-full border border-input rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring bg-background"
-          />
-        );
-        
-      case 'multipleChoice':
-        return (
-          <div className="space-y-3">
-            {currentQuestion.choices?.map(choice => (
-              <label 
-                key={choice.id} 
-                className="flex items-start space-x-3 p-3 border border-input rounded-md cursor-pointer hover:bg-accent/50 transition-colors"
-              >
-                <input
-                  type="radio"
-                  name={currentQuestion.id}
-                  checked={(answer.value as string) === choice.id}
-                  onChange={() => updateAnswer(choice.id)}
-                  className="mt-0.5"
-                />
-                <span>{choice.text}</span>
-              </label>
-            ))}
-          </div>
-        );
-        
-      case 'checkbox':
-        return (
-          <div className="space-y-3">
-            {currentQuestion.choices?.map(choice => (
-              <label 
-                key={choice.id} 
-                className="flex items-start space-x-3 p-3 border border-input rounded-md cursor-pointer hover:bg-accent/50 transition-colors"
-              >
-                <input
-                  type="checkbox"
-                  checked={(answer.value as string[]).includes(choice.id)}
-                  onChange={(e) => {
-                    const currentValues = answer.value as string[];
-                    if (e.target.checked) {
-                      updateAnswer([...currentValues, choice.id]);
-                    } else {
-                      updateAnswer(currentValues.filter(v => v !== choice.id));
-                    }
-                  }}
-                  className="mt-0.5"
-                />
-                <span>{choice.text}</span>
-              </label>
-            ))}
-          </div>
-        );
-        
-      case 'rating':
-        return (
-          <div className="py-6">
-            <div className="flex justify-between items-center">
-              {Array.from({ length: currentQuestion.maxRating || 5 }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => updateAnswer(i + 1)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                    (answer.value as number) >= i + 1
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-primary/20'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-            
-            <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-              <span>Not satisfied</span>
-              <span>Very satisfied</span>
-            </div>
-          </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="pt-24 px-6 pb-20">
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-8">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mb-1 text-sm text-muted-foreground"
-            >
-              Question {currentStep + 1} of {survey.questions.length}
-            </motion.div>
-            
-            <motion.div
-              key={`progress-${currentStep}`}
-              initial={{ width: `${(currentStep / survey.questions.length) * 100}%` }}
-              animate={{ width: `${((currentStep + 1) / survey.questions.length) * 100}%` }}
-              className="h-1 bg-primary rounded-full mb-8"
-              transition={{ duration: 0.3 }}
-            />
-            
-            <motion.h1
-              key={`title-${currentStep}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="text-2xl font-semibold tracking-tight mb-2"
-            >
-              {survey.title}
-            </motion.h1>
-            
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-muted-foreground whitespace-pre-wrap"
-              dangerouslySetInnerHTML={{ __html: survey.description.replace(/\n/g, '<br>') }}
-            />
-          </div>
-          
-          <motion.div
-            key={`question-${currentStep}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4 }}
-            className="bg-card rounded-lg border shadow-sm p-6 mb-6"
-          >
-            <div className="mb-6">
-              <h2 className="text-xl font-medium mb-4">
-                {currentQuestion.text}
-                {currentQuestion.required && (
-                  <span className="text-destructive ml-1">*</span>
-                )}
-              </h2>
-              
-              {renderQuestionInput()}
-            </div>
-          </motion.div>
-          
-          {renderPreviousAnswers()}
-          
-          <div className="flex justify-between mt-6">
-            <button
-              onClick={handlePrevious}
-              disabled={currentStep === 0}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            >
-              Previous
-            </button>
-            
-            <button
-              onClick={handleNext}
-              disabled={isSubmitting}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            >
-              {currentStep < survey.questions.length - 1 ? (
-                <>Next<ArrowRight size={16} className="ml-2" /></>
-              ) : (
-                'Submit'
+    <div className="min-h-screen bg-background pb-20">
+      {isAdmin && <Header />}
+      <main className="pt-10 px-6">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-3xl mx-auto"
+        >
+          <div className="bg-card rounded-lg border shadow-sm overflow-hidden">
+            <div className="p-6 border-b">
+              <h1 className="text-2xl font-bold">{survey.title}</h1>
+              {survey.description && (
+                <div 
+                  className="mt-2 text-muted-foreground whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: survey.description.replace(/\n/g, '<br/>') }}
+                />
               )}
-            </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-8">
+              {survey.questions.map((question: Question, index: number) => (
+                <div key={question.id} className="space-y-2">
+                  <label className="block font-medium">
+                    {index + 1}. {question.text}
+                    {question.required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  
+                  {question.type === 'text' && (
+                    <input
+                      type="text"
+                      value={answers[question.id] || ''}
+                      onChange={(e) => handleInputChange(question.id, e.target.value)}
+                      className="w-full bg-background border border-input rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="Your answer"
+                    />
+                  )}
+                  
+                  {question.type === 'textarea' && (
+                    <textarea
+                      value={answers[question.id] || ''}
+                      onChange={(e) => handleInputChange(question.id, e.target.value)}
+                      className="w-full bg-background border border-input rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring"
+                      placeholder="Your answer"
+                      rows={4}
+                    />
+                  )}
+                  
+                  {question.type === 'radio' && question.options && (
+                    <div className="space-y-2">
+                      {question.options.map((option) => (
+                        <label key={option} className="flex items-center space-x-2">
+                          <input
+                            type="radio"
+                            name={question.id}
+                            value={option}
+                            checked={answers[question.id] === option}
+                            onChange={() => handleInputChange(question.id, option)}
+                            className="rounded-full"
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {question.type === 'checkbox' && question.options && (
+                    <div className="space-y-2">
+                      {question.options.map((option) => {
+                        const currentAnswers = answers[question.id] ? answers[question.id].split(',') : [];
+                        const isChecked = currentAnswers.includes(option);
+                        
+                        return (
+                          <label key={option} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              value={option}
+                              checked={isChecked}
+                              onChange={() => {
+                                let newAnswers;
+                                if (isChecked) {
+                                  newAnswers = currentAnswers.filter((a) => a !== option);
+                                } else {
+                                  newAnswers = [...currentAnswers, option];
+                                }
+                                handleInputChange(question.id, newAnswers.join(','));
+                              }}
+                              className="rounded"
+                            />
+                            <span>{option}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              <Button type="submit" className="w-full sm:w-auto">
+                Submit Survey
+              </Button>
+            </form>
           </div>
-        </div>
+        </motion.div>
       </main>
     </div>
   );
