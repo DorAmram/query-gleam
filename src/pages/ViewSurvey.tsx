@@ -178,17 +178,19 @@ const ViewSurvey = () => {
             if (!answer) return null;
             
             let content;
+            let selectedChoice;
+            let selectedChoices;
             
             switch (currentQuestion.type) {
               case 'text':
                 content = <p className="mb-2">{answer.value as string}</p>;
                 break;
               case 'multipleChoice':
-                const selectedChoice = currentQuestion.choices?.find(c => c.id === answer.value);
+                selectedChoice = currentQuestion.choices?.find(c => c.id === answer.value);
                 content = <p className="mb-2">{selectedChoice?.text}</p>;
                 break;
               case 'checkbox':
-                const selectedChoices = currentQuestion.choices?.filter(c => 
+                selectedChoices = currentQuestion.choices?.filter(c => 
                   (answer.value as string[]).includes(c.id)
                 );
                 content = (
