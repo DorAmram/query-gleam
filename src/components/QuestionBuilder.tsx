@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question, QuestionType, Choice } from '@/types';
@@ -16,7 +15,7 @@ const QuestionBuilder = ({ question, onChange, onDelete, index }: QuestionBuilde
   const [isOpen, setIsOpen] = useState(true);
 
   const handleTypeChange = (type: QuestionType) => {
-    let updatedQuestion: Question = { ...question, type };
+    const updatedQuestion: Question = { ...question, type };
     
     // Initialize choices array if changing to multiple choice or checkbox
     if ((type === 'multipleChoice' || type === 'checkbox') && !question.choices) {
